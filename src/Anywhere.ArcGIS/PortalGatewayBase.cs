@@ -283,57 +283,72 @@
         public virtual async Task<QueryResponse<T>> BatchQuery<T>(Query queryOptions, CancellationToken ct = default(CancellationToken))
             where T : IGeometry
         {
-            var result = await Get<QueryResponse<T>, Query>(queryOptions, ct);
+                QueryResponse<T> response = null;
 
-            if (result != null && result.Error == null && result.Features != null && result.Features.Any() && result.ExceededTransferLimit.HasValue && result.ExceededTransferLimit.Value == true)
-            {
-                // need to get the remaining data since we went over the limit
+                var features = new List<Feature<T>>();
+
                 var endpoint = queryOptions.Endpoint.RelativeUrl.Replace($"/{Operations.Query}", "").AsEndpoint();
                 var layerDesc = await DescribeLayer(endpoint, ct);
-                var batchSize = result.Features.Count();
-                var loop = 1;
-                var exceeded = true;
+                var batchSize = layerDesc.MaximumRecordCount;
+                if(batchSize == 0) batchSize = 5000;
 
                 // if pagination isn't supported, need to track objectids returned
                 var originalWhere = queryOptions.Where;
                 var oidField = layerDesc.ObjectIdField ?? layerDesc.Fields.Where(a => a.Type == FieldDataTypes.EsriOID).Select(a => a.Name).First();
-                var oidList = result.Features.Select(x => x.ObjectID.ToString());
+                var oidList = new List<string>();
 
-                while (exceeded == true)
+                var supportsPaging = layerDesc.AdvancedQueryCapabilities?.SupportsPagination == true;
+
+                while (true)
                 {
-                    _logger.InfoFormat("Exceeded query transfer limit (found {0}), batching query for {1} - loop {2}", batchSize, queryOptions.RelativeUrl, loop);
-                    var innerQueryOptions = queryOptions;
-                    if (layerDesc.AdvancedQueryCapabilities.SupportsPagination)
+                    if (supportsPaging)
                     {
-                        // use Pagination
-                        innerQueryOptions.ResultOffset = batchSize * loop;
-                        innerQueryOptions.ResultRecordCount = batchSize;
+                        queryOptions.ResultOffset = features.Count;
+                        queryOptions.ResultRecordCount = batchSize;
                     }
                     else
                     {
                         // use list of OIDs to exclude
-                        innerQueryOptions.Where = $"({originalWhere}) AND ({oidField} not in ({string.Join(",", oidList)}))";
+                        queryOptions.Where = $"({originalWhere}) AND ({oidField} not in ({string.Join(",", oidList)}))";
                     }
-                    var innerResult = await Get<QueryResponse<T>, Query>(queryOptions, ct).ConfigureAwait(false);
+                    
+                    var result = await Get<QueryResponse<T>, Query>(queryOptions, ct).ConfigureAwait(false);
+                    
+                    // response contains all important extra info, we will need to keep the features coming
+                    response ??= result;
 
-                    if (innerResult != null && innerResult.Error == null && innerResult.Features != null && innerResult.Features.Any())
+                    var featureCount = result.Features?.Count();
+
+                    if (result is { Error: null } && featureCount > 0)
                     {
-                        oidList = oidList.Concat(innerResult.Features.Select(x => x.ObjectID.ToString()));
-                        result.Features = result.Features.Concat(innerResult.Features);
-                        exceeded = result.ExceededTransferLimit.HasValue
-                            && innerResult.ExceededTransferLimit.HasValue
-                            && innerResult.ExceededTransferLimit.Value;
+                        if (!supportsPaging)
+                            oidList.AddRange(result.Features.Select(x => x.ObjectID.ToString()));
+
+                        features.AddRange(result.Features);
                     }
                     else
                     {
-                        exceeded = false;
+                        // no more features or errored out
+                        break;
                     }
-
-                    loop++;
                 }
-            }
 
-            return result;
+                if (response != null)
+                {
+                    // try to avoid duplicated features the best we can
+                    // in some cases arcgis fails to order them properly.
+                    // we can avoid duplication objects with objectid at least.
+                    var featuresWithoutId = features.Where(x => x.ObjectID == 0).ToList();
+                    var featuresWithId = features.Where(x => x.ObjectID != 0).GroupBy(x => x.ObjectID).SelectMany(x => x).ToList();
+                    
+                    var finalFeatures = new List<Feature<T>>();
+                    finalFeatures.AddRange(featuresWithId);
+                    finalFeatures.AddRange(featuresWithoutId);
+
+                    response.Features = finalFeatures;
+                }
+
+                return response;
         }
 
         /// <summary>
