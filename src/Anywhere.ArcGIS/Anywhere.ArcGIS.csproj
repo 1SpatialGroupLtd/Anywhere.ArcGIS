@@ -6,16 +6,15 @@
     <Authors>Dave Timmins</Authors>
     <Company>Dave Timmins</Company>
     <Title>Anywhere.ArcGIS</Title>
+    <PackageId>1Spatial.Anywhere.ArcGIS</PackageId>  
     <Description>Operations and data types used with the ArcGIS REST API.</Description>
     <Summary>Operations and data types used with the ArcGIS REST API.</Summary>
     <Copyright>Copyright Dave Timmins (c) 2018. All rights reserved.</Copyright>
-    <PackageLicenseUrl></PackageLicenseUrl>
-    <PackageProjectUrl>https://github.com/davetimmins/Anywhere.ArcGIS</PackageProjectUrl>
-    <PackageIconUrl>https://raw.githubusercontent.com/davetimmins/Anywhere.ArcGIS/master/logo.png</PackageIconUrl>
-    <RepositoryUrl>https://github.com/davetimmins/Anywhere.ArcGIS</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/1SpatialGroupLtd/Anywhere.ArcGIS</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/1SpatialGroupLtd/Anywhere.ArcGIS</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>ArcGIS ArcGISServer ArcGISOnline Esri REST netstandard anywhere GIS Mapping Map Location GeoLocation OAuth</PackageTags>
-    <Version>2.0.2</Version>
+    <Version>2.0.3</Version>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
 
@@ -29,12 +28,6 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="SourceLink.Create.GitHub" Version="2.8.3" PrivateAssets="All" />
-    <DotNetCliToolReference Include="dotnet-sourcelink-git" Version="2.8.3" />
-    <DotNetCliToolReference Include="dotnet-sourcelink" Version="2.8.3" />
   </ItemGroup>
 
   <ItemGroup>
