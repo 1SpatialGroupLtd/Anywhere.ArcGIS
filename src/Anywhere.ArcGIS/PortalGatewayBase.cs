@@ -313,6 +313,8 @@
                     }
                     
                     var result = await Get<QueryResponse<T>, Query>(queryOptions, ct).ConfigureAwait(false);
+                    // result returns with null if the ct was cancelled
+                    if(result == null) break;
                     
                     // response contains all important extra info, we will need to keep the features coming
                     response ??= result;
@@ -329,6 +331,7 @@
                     else
                     {
                         // no more features or errored out
+                        response.Error ??= result.Error;
                         break;
                     }
                 }
